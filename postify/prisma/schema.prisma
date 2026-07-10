@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("NEON_DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  USER
+  BANNED
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  password       String
+  role           Role      @default(USER)
+  avatar         String?
+  bio            String?
+  resetToken     String?
+  resetTokenExp  DateTime?
+  isActive       Boolean   @default(true)
+  lastSeen       DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  posts          Post[]
+  comments       Comment[]
+  postLikes      PostLike[]
+  commentLikes   CommentLike[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String   @default("#6366f1")
+  createdAt   DateTime @default(now())
+
+  posts       Post[]
+
+  @@index([slug])
+}
+
+model Tag {
+  id    String     @id @default(cuid())
+  name  String     @unique
+  slug  String     @unique
+  posts PostTag[]
+
+  @@index([slug])
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  title       String
+  content     String
+  excerpt     String?
+  status      PostStatus @default(DRAFT)
+  isPinned    Boolean    @default(false)
+  publishAt   DateTime?
+  imageUrls   String[]   @default([])
+  videoUrls   String[]   @default([])
+  viewCount   Int        @default(0)
+  authorId    String
+  categoryId  String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category    Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  comments    Comment[]
+  likes       PostLike[]
+  tags        PostTag[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([isPinned])
+  @@index([publishAt])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  isPinned  Boolean  @default(false)
+  postId    String
+  authorId  String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]     @relation("CommentReplies")
+  likes     CommentLike[]
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+}
+
+model SiteSettings {
+  id                 String   @id @default("singleton")
+  siteName           String   @default("PostHub")
+  description        String   @default("Sua plataforma de postagens")
+  logo               String?
+  favicon            String?
+  theme              String   @default("light")
+  primaryColor       String   @default("#6366f1")
+  secondaryColor     String   @default("#8b5cf6")
+  fontFamily         String   @default("Inter")
+  footerText         String   @default("© 2024 PostHub. Todos os direitos reservados.")
+  socialLinks        Json     @default("{}")
+  bannerImages       String[] @default([])
+  sidebarImages      String[] @default([])
+  backgroundImage    String?
+  welcomeMessage     String   @default("Bem-vindo ao PostHub!")
+  maintenanceMode    Boolean  @default(false)
+  maintenanceMessage String   @default("Site em manutenção. Voltamos em breve!")
+  updatedAt          DateTime @updatedAt
+}

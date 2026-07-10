@@ -1,0 +1,12 @@
+node_modules/
+dist/
+client/dist/
+client/node_modules/
+.env
+*.log
+uploads/*
+!uploads/.gitkeep
+.DS_Store
+.vscode/
+*.tsbuildinfo
+prisma/migrations/
